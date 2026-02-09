@@ -1,1 +1,55 @@
-<!DOCTYPE html>\n<html lang="en">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>3D Battle Game</title>\n    <style>\n        body { margin: 0; }\n        canvas { display: block; }\n    </style>\n</head>\n<body>\n    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>\n    <script>\n        // Scene and Renderer\n        const scene = new THREE.Scene();\n        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);\n        const renderer = new THREE.WebGLRenderer();\n        renderer.setSize(window.innerWidth, window.innerHeight);\n        document.body.appendChild(renderer.domElement);\n\n        // Ground\n        const groundGeometry = new THREE.PlaneGeometry(500, 500);\n        const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x228B22 });\n        const ground = new THREE.Mesh(groundGeometry, groundMaterial);\n        ground.rotation.x = - Math.PI / 2;\n        scene.add(ground);\n\n        // Function to create a character \n        function createCharacter() {\n            const characterGeometry = new THREE.BoxGeometry(1, 1, 1);\n            const characterMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });\n            const character = new THREE.Mesh(characterGeometry, characterMaterial);\n            character.position.y = 0.5;\n            return character;\n        }\n\n        // Characters\n        const character1 = createCharacter();\n        character1.position.set(-2, 0, 0);\n        scene.add(character1);\n\n        const character2 = createCharacter();\n        character2.position.set(2, 0, 0);\n        scene.add(character2);\n\n        // Animation loop\n        function animate() {\n            requestAnimationFrame(animate);\n            character1.rotation.y += 0.01;\n            character2.rotation.y -= 0.01;\n            renderer.render(scene, camera);\n        }\n        animate();\n\n        // Camera position\n        camera.position.z = 5;\n        camera.position.y = 1;\n    </script>\n</body>\n</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battle 3D</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .character {
+            width: 100px;
+            height: 150px;
+            background: url('path-to-new-character-design.png') no-repeat center center;
+            background-size: cover;
+            margin: 0 auto;
+        }
+        .info {
+            font-size: 12px;
+            margin: 5px 0;
+        }
+        .action {
+            font-size: 10px;
+            margin: 10px 0;
+        }
+        .battle-layout {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Battle 3D</h1>
+    </header>
+    <div class="battle-layout">
+        <div class="character">
+            <div class="info">Character 1</div>
+            <div class="action">Attack!</div>
+        </div>
+        <div class="character">
+            <div class="info">Character 2</div>
+            <div class="action">Defend!</div>
+        </div>
+    </div>
+</body>
+</html>
