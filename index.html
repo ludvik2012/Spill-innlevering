@@ -1,453 +1,628 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="no">
 <head>
-  <meta charset="utf-8" />
-  <title>SWAT Raid — Mobile med Fullt Kart</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <style>
-    :root{
-      --bg:#07121a;
-      --panel: rgba(0,0,0,0.55);
-      --accent:#2bb0ff;
-      --muted:#9fb0bf;
-      --btn:#17202a;
-    }
-    html,body{height:100%;margin:0;background:var(--bg);color:#e7f3fb;font-family:Inter,Arial,Helvetica,sans-serif;touch-action:none; -webkit-user-select:none; user-select:none;}
-    canvas.webgl{position:fixed;inset:0;display:block;z-index:0}
-    #hud{position:fixed;left:10px;top:10px;z-index:40;background:var(--panel);padding:10px;border-radius:10px;width:240px;box-shadow:0 8px 22px rgba(0,0,0,0.6)}
-    #hud h2{margin:0 0 8px 0;font-size:15px}
-    .stat{font-size:13px;color:var(--muted);margin-bottom:6px;}
-    #minimap{position:fixed;right:10px;top:10px;z-index:40;background:var(--panel);padding:8px;border-radius:10px;width:200px;height:140px;box-shadow:0 8px 22px rgba(0,0,0,0.6)}
-    #minimap canvas{width:100%;height:100%;border-radius:6px;background:#02040a;display:block}
-    #minimapControls{display:flex;gap:6px;margin-top:6px}
-    #minimapControls button{padding:6px 8px;border-radius:6px;border:0;background:var(--btn);color:#e7f3fb}
-    #mobileControls{position:fixed;left:0;right:0;bottom:10px;z-index:50;display:flex;justify-content:space-between;padding:0 12px;pointer-events:none}
-    .leftControl{pointer-events:auto;display:flex;align-items:flex-end}
-    .rightControl{pointer-events:auto;display:flex;flex-direction:column;gap:10px;align-items:flex-end}
-    #joystick{width:120px;height:120px;border-radius:60px;background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(0,0,0,0.14));display:flex;align-items:center;justify-content:center;touch-action:none}
-    #stick{width:48px;height:48px;border-radius:24px;background:rgba(255,255,255,0.06);transform:none;transition:transform 0.02s linear}
-    .actionBtn{width:64px;height:64px;border-radius:12px;background:var(--btn);display:flex;align-items:center;justify-content:center;color:#e7f3fb;border:0;font-weight:700;box-shadow:0 6px 14px rgba(0,0,0,0.45);pointer-events:auto}
-    .smallBtn{width:48px;height:48px;border-radius:10px;background:var(--btn);display:flex;align-items:center;justify-content:center;color:#e7f3fb;border:0;pointer-events:auto}
-    #breachPanel{position:fixed;left:50%;transform:translateX(-50%);bottom:140px;z-index:60;background:rgba(0,0,0,0.7);padding:8px;border-radius:10px;display:none;gap:8px}
-    #breachPanel .breachBtn{padding:8px 14px;border-radius:8px;border:0;background:#254046;color:#e7f3fb;font-weight:700}
-    #message{position:fixed;left:50%;transform:translateX(-50%);bottom:48px;z-index:60;background:rgba(0,0,0,0.5);padding:8px 12px;border-radius:10px;font-size:14px;display:none}
-    #fullMapOverlay{position:fixed;inset:0;z-index:100;background:rgba(4,6,10,0.92);display:none;align-items:center;justify-content:center;flex-direction:column}
-    #fullMapCanvas{background:#02050a;border-radius:8px;touch-action:none;box-shadow:0 20px 60px rgba(0,0,0,0.7)}
-    #fullMapUI{position:absolute;top:18px;right:18px;display:flex;flex-direction:column;gap:8px}
-    #fullMapUI button{padding:8px 12px;border-radius:8px;border:0;background:var(--btn);color:#e7f3fb}
-    #legend{position:absolute;left:18px;top:18px;background:rgba(0,0,0,0.45);padding:8px;border-radius:8px;color:var(--muted);font-size:13px}
-    @media (min-width:900px){ #minimap{width:260px;height:200px} #joystick{display:none} }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Battle Ground</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-  </style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            overflow: hidden;
+            width: 100%;
+            height: 100vh;
+        }
+
+        #gameContainer {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .characters {
+            width: 100%;
+            height: 60%;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 40px 0;
+        }
+
+        .character {
+            font-size: 150px;
+            animation: bounce 1s infinite;
+        }
+
+        .character.player {
+            animation: bounceLeft 1s infinite;
+        }
+
+        .character.enemy {
+            animation: bounceRight 1s infinite;
+        }
+
+        @keyframes bounceLeft {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+
+        @keyframes bounceRight {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(-5deg); }
+        }
+
+        .attack-animation {
+            animation: attack 0.5s !important;
+        }
+
+        .damage-animation {
+            animation: damage 0.4s !important;
+        }
+
+        @keyframes attack {
+            0% { transform: translateX(0) scale(1); }
+            50% { transform: translateX(60px) scale(1.1); }
+            100% { transform: translateX(0) scale(1); }
+        }
+
+        @keyframes damage {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-15px); }
+            75% { transform: translateX(15px); }
+        }
+
+        .ui {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+        }
+
+        .player-stats {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #00ff00;
+            min-width: 220px;
+            pointer-events: auto;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+
+        .enemy-stats {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #ff0000;
+            min-width: 220px;
+            pointer-events: auto;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+        }
+
+        .stat-name {
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .health-bar-container {
+            background: #333;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 8px 0;
+            border: 1px solid #666;
+            height: 20px;
+        }
+
+        .health-bar {
+            background: linear-gradient(90deg, #00ff00, #00aa00);
+            height: 100%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.7em;
+        }
+
+        .health-bar.low {
+            background: linear-gradient(90deg, #ff0000, #aa0000);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+            font-size: 0.75em;
+        }
+
+        .special-meter {
+            background: #333;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 6px 0;
+            border: 1px solid #666;
+            height: 12px;
+        }
+
+        .special-bar {
+            background: linear-gradient(90deg, #ffff00, #ffaa00);
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .actions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: grid;
+            grid-template-columns: repeat(2, 130px);
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        button {
+            padding: 10px;
+            font-size: 0.85em;
+            font-weight: bold;
+            border: 2px solid #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+            color: #00ff00;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover:not(:disabled) {
+            background: rgba(0, 255, 0, 0.3);
+            transform: scale(1.05);
+        }
+
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            border-color: #666;
+            color: #666;
+        }
+
+        .special-btn {
+            grid-column: 1 / -1;
+            border-color: #ffff00;
+            color: #ffff00;
+            background: rgba(255, 255, 0, 0.1);
+        }
+
+        .special-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 0, 0.3);
+        }
+
+        .battle-log {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 12px;
+            border-radius: 8px;
+            border: 2px solid #00ffff;
+            width: 450px;
+            max-height: 150px;
+            overflow-y: auto;
+            pointer-events: auto;
+            font-size: 0.8em;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px;
+        }
+
+        .log-entry.player {
+            color: #00ff00;
+        }
+
+        .log-entry.enemy {
+            color: #ff0000;
+        }
+
+        .status-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3em;
+            font-weight: bold;
+            pointer-events: auto;
+            text-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
+            display: none;
+            z-index: 100;
+        }
+
+        .status-message.show {
+            display: block;
+            animation: pulse 0.5s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
+        }
+
+        .reset-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 8px 16px;
+            background: rgba(100, 100, 255, 0.2);
+            border: 2px solid #6464ff;
+            color: #6464ff;
+            border-radius: 5px;
+            cursor: pointer;
+            pointer-events: auto;
+            font-size: 0.9em;
+        }
+
+        .reset-btn:hover {
+            background: rgba(100, 100, 255, 0.4);
+        }
+    </style>
 </head>
 <body>
-  <canvas id="c" class="webgl"></canvas>
-
-  <div id="hud">
-    <h2>SWAT Raid — Mobile (Map)</h2>
-    <div class="stat">Helse: <strong id="hp">100</strong></div>
-    <div class="stat">Ammo: <strong id="ammo">30</strong></div>
-    <div class="stat">Rom: <span id="roomIndex">0</span>/<span id="roomCount">0</span></div>
-    <div style="margin-top:6px">Stå ved dør -> velg breach</div>
-  </div>
-
-  <div id="minimap">
-    <canvas id="map"></canvas>
-    <div id="minimapControls">
-      <button id="openMap">Åpne kart</button>
-      <button id="centerMap">Sentrer</button>
+    <div id="gameContainer">
+        <div class="characters">
+            <div class="character player" id="playerChar">🧙</div>
+            <div class="character enemy" id="enemyChar">🐲</div>
+        </div>
     </div>
-  </div>
 
-  <div id="breachPanel">
-    <button class="breachBtn" data-type="silent">1 — Silent</button>
-    <button class="breachBtn" data-type="flashbang">2 — Flashbang</button>
-    <button class="breachBtn" data-type="dynamic">3 — Dynamic</button>
-  </div>
+    <div class="ui">
+        <button class="reset-btn" onclick="resetGame()">🔄 Nytt Spill</button>
 
-  <div id="message"></div>
+        <div class="battle-log" id="battleLog"></div>
 
-  <div id="mobileControls">
-    <div class="leftControl">
-      <div id="joystick"><div id="stick"></div></div>
+        <div class="status-message" id="statusMessage"></div>
+
+        <div class="player-stats">
+            <div class="stat-name" id="playerNameUI">🧙 Du</div>
+            <div class="health-bar-container">
+                <div class="health-bar" id="playerHealthBar" style="width: 100%">
+                    <span id="playerHealthText">100/100</span>
+                </div>
+            </div>
+            <div class="stat-row">
+                <span>HP:</span>
+                <span id="playerHPValue">100</span>
+            </div>
+            <div class="stat-row">
+                <span>Styrke:</span>
+                <span id="playerAttack">15</span>
+            </div>
+            <div class="stat-row">
+                <span>Forsvar:</span>
+                <span id="playerDefense">10</span>
+            </div>
+            <div style="margin-top: 6px; font-size: 0.75em;">Ultimate:</div>
+            <div class="special-meter">
+                <div class="special-bar" id="playerSpecialBar" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <div class="enemy-stats">
+            <div class="stat-name" id="enemyNameUI">🐲 Fiende</div>
+            <div class="health-bar-container">
+                <div class="health-bar" id="enemyHealthBar" style="width: 100%">
+                    <span id="enemyHealthText">100/100</span>
+                </div>
+            </div>
+            <div class="stat-row">
+                <span>HP:</span>
+                <span id="enemyHPValue">100</span>
+            </div>
+            <div class="stat-row">
+                <span>Styrke:</span>
+                <span id="enemyAttack">12</span>
+            </div>
+            <div class="stat-row">
+                <span>Forsvar:</span>
+                <span id="enemyDefense">8</span>
+            </div>
+            <div style="margin-top: 6px; font-size: 0.75em;">Ultimate:</div>
+            <div class="special-meter">
+                <div class="special-bar" id="enemySpecialBar" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button onclick="playerAttack()">⚡ Angrep</button>
+            <button onclick="playerDefend()">🛡️ Forsvar</button>
+            <button onclick="playerHeal()">💚 Heil</button>
+            <button class="special-btn" onclick="playerSpecial()" id="specialBtn" disabled>✨ Ultimate</button>
+        </div>
     </div>
-    <div class="rightControl">
-      <button class="actionBtn" id="shootBtn">SKYT</button>
-      <div style="display:flex;gap:8px">
-        <button class="smallBtn" id="reloadBtn">R</button>
-        <button class="smallBtn" id="toggleView">C</button>
-        <button class="smallBtn" id="mapBtn">M</button>
-      </div>
-    </div>
-  </div>
 
-  <!-- Full-screen map overlay -->
-  <div id="fullMapOverlay">
-    <div id="legend">
-      <div><strong>Kart</strong></div>
-      <div style="margin-top:6px"><span style="display:inline-block;width:12px;height:12px;background:#2bb0ff;margin-right:6px;border-radius:2px"></span>Spiller</div>
-      <div><span style="display:inline-block;width:12px;height:12px;background:#ff3333;margin-right:6px;border-radius:2px"></span>Varslet fiende</div>
-      <div><span style="display:inline-block;width:12px;height:12px;background:#ff8c42;margin-right:6px;border-radius:2px"></span>Bevæpnet</div>
-      <div><span style="display:inline-block;width:12px;height:12px;background:#777;margin-right:6px;border-radius:2px"></span>Ubevæpnet</div>
-    </div>
-    <canvas id="fullMapCanvas" width="900" height="700" style="width:92vw;max-width:1200px;height:86vh;max-height:900px"></canvas>
-    <div id="fullMapUI">
-      <button id="closeFullMap">Lukk</button>
-      <button id="zoomIn">Zoom +</button>
-      <button id="zoomOut">Zoom -</button>
-      <button id="resetView">Reset</button>
-    </div>
-  </div>
+    <script>
+        // Game state
+        const gameState = {
+            player: {
+                health: 100,
+                maxHealth: 100,
+                attack: 15,
+                defense: 10,
+                specialEnergy: 0
+            },
+            enemy: {
+                health: 100,
+                maxHealth: 100,
+                attack: 12,
+                defense: 8,
+                specialEnergy: 0,
+                name: "Drage"
+            },
+            battleLog: [],
+            gameOver: false,
+            playerDefending: false,
+            enemyDefending: false
+        };
 
-  <!-- three.js -->
-  <script src="https://unpkg.com/three@0.152.2/build/three.min.js"></script>
+        const enemies = [
+            { name: "Drage", health: 100, attack: 12, defense: 8, emoji: "🐲" },
+            { name: "Robot", health: 80, attack: 14, defense: 12, emoji: "🤖" },
+            { name: "Troll", health: 120, attack: 11, defense: 6, emoji: "👹" },
+            { name: "Vampyr", health: 85, attack: 16, defense: 9, emoji: "🧛" },
+            { name: "Spøkelse", health: 70, attack: 13, defense: 11, emoji: "👻" }
+        ];
 
-  <script>
-  /**********************************************************************
-   SWAT Raid — Mobile with Full Map
-   - This file extends the prior mobile prototype by adding a full-screen,
-     interactive map that you can open (touch/drag to pan, pinch to zoom,
-     mouse wheel to zoom). The full map shows rooms, doors, player, enemies.
-   - The rest of the prototype (rooms, enemies, player, joystick, shooting,
-     breaching) is implemented below and kept mobile-friendly.
-  **********************************************************************/
-
-  // ---------- Configuration ----------
-  const GRID_COLS = 4, GRID_ROWS = 3;
-  const ROOM_W = 10, ROOM_D = 8, ROOM_GAP = 2;
-  const MAX_ENEMIES = 3, ENEMY_SPAWN_CHANCE = 0.7;
-  const PLAYER_SPEED = 4.6, PLAYER_EYE_HEIGHT = 1.6, PLAYER_RADIUS = 0.35;
-  const FIRE_DAMAGE = 60, ENEMY_FIRE_MIN = 6, ENEMY_FIRE_MAX = 12;
-  const RELOAD_TIME = 1.6, STUN_DURATION = 5.0;
-
-  // ---------- Three.js setup ----------
-  const canvas = document.getElementById('c');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
-
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x08121a);
-  const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 1000);
-
-  scene.add(new THREE.AmbientLight(0xffffff, 0.75));
-  const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
-  dirLight.position.set(4,10,3); scene.add(dirLight);
-
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(500,500), new THREE.MeshStandardMaterial({ color:0x1b2a30, roughness:0.95 }));
-  ground.rotation.x = -Math.PI/2; scene.add(ground);
-
-  // ---------- World & Entities ----------
-  const player = { root: new THREE.Object3D(), mesh: null, health:100, yaw:0, pitch:-0.12, ammo:30, maxAmmo:30, reloading:false };
-  scene.add(player.root);
-  player.mesh = new THREE.Mesh(new THREE.BoxGeometry(0.6,1.8,0.6), new THREE.MeshStandardMaterial({ color:0x2bb0ff }));
-  player.mesh.position.y = 0.9;
-  player.root.add(player.mesh);
-
-  let rooms = [], doors = [], enemiesInRoom = [], wallBoxes = [], covers = [];
-
-  // UI refs
-  const hpEl = document.getElementById('hp');
-  const ammoEl = document.getElementById('ammo');
-  const roomIndexEl = document.getElementById('roomIndex');
-  const roomCountEl = document.getElementById('roomCount');
-  const mapCanvas = document.getElementById('map');
-  const mapCtx = mapCanvas.getContext('2d');
-  const messageEl = document.getElementById('message');
-  const breachPanel = document.getElementById('breachPanel');
-
-  // joystick state
-  const joystick = document.getElementById('joystick'), stick = document.getElementById('stick');
-  let leftTouchId = null, rightTouchId = null;
-  let stickCenter = { x:0, y:0 }, moveVec = { x:0, y:0 };
-
-  // full-map overlay elements
-  const fullOverlay = document.getElementById('fullMapOverlay');
-  const fullCanvas = document.getElementById('fullMapCanvas');
-  const fullCtx = fullCanvas.getContext('2d');
-  const openMapBtn = document.getElementById('openMap');
-  const centerMapBtn = document.getElementById('centerMap');
-  const closeFullMapBtn = document.getElementById('closeFullMap');
-  const zoomInBtn = document.getElementById('zoomIn');
-  const zoomOutBtn = document.getElementById('zoomOut');
-  const resetViewBtn = document.getElementById('resetView');
-
-  // full map view transform state
-  let fullMapZoom = 1.0;
-  let fullMapOffset = { x:0, y:0 }; // pan offset in pixels
-  let isFullMapOpen = false;
-
-  // controls and keys
-  const keys = { w:false, a:false, s:false, d:false };
-  let lastTime = performance.now();
-  let lastLook = null;
-
-  // ---------- Utility / UI functions ----------
-  function showMessage(s, ms=1500){
-    messageEl.style.display = 'block';
-    messageEl.textContent = s;
-    if (ms>0) setTimeout(()=>{ if (messageEl.textContent === s) messageEl.style.display='none'; }, ms);
-  }
-
-  function log(s){ console.log('[SWAT]', s); showMessage(s, 1200); }
-
-  // ---------- Build world ----------
-  function buildWorld(){
-    rooms = []; doors = []; enemiesInRoom = []; wallBoxes = []; covers = [];
-    const totalW = GRID_COLS * ROOM_W + (GRID_COLS -1)*ROOM_GAP;
-    const totalD = GRID_ROWS * ROOM_D + (GRID_ROWS -1)*ROOM_GAP;
-    const originX = - totalW/2 + ROOM_W/2;
-    const originZ = - totalD/2 + ROOM_D/2;
-
-    const roomMat = new THREE.MeshStandardMaterial({ color:0x21363d, roughness:0.9 });
-    const wallMat = new THREE.MeshStandardMaterial({ color:0x0e1214, roughness:1 });
-
-    for(let ry=0; ry<GRID_ROWS; ry++){
-      for(let rx=0; rx<GRID_COLS; rx++){
-        const idx = ry*GRID_COLS + rx;
-        const cx = originX + rx*(ROOM_W + ROOM_GAP);
-        const cz = originZ + ry*(ROOM_D + ROOM_GAP);
-        rooms.push({ index: idx, cx, cz, rx, ry });
-
-        const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_D), roomMat);
-        floor.rotation.x = -Math.PI/2; floor.position.set(cx, 0.01, cz); scene.add(floor);
-
-        const wallH = 2.8, thick = 0.35;
-        // left
-        if (rx === 0){
-          const left = new THREE.Mesh(new THREE.BoxGeometry(thick, wallH, ROOM_D), wallMat);
-          left.position.set(cx - ROOM_W/2 - thick/2, wallH/2, cz); scene.add(left); wallBoxes.push(new THREE.Box3().setFromObject(left));
-        } else {
-          const doorW = 2.0, segDepth = (ROOM_D - doorW)/2;
-          const s1 = new THREE.Mesh(new THREE.BoxGeometry(thick, wallH, segDepth), wallMat);
-          s1.position.set(cx - ROOM_W/2 - thick/2, wallH/2, cz + (ROOM_D/2 - segDepth/2)); scene.add(s1); wallBoxes.push(new THREE.Box3().setFromObject(s1));
-          const s2 = new THREE.Mesh(new THREE.BoxGeometry(thick, wallH, segDepth), wallMat);
-          s2.position.set(cx - ROOM_W/2 - thick/2, wallH/2, cz - (ROOM_D/2 - segDepth/2)); scene.add(s2); wallBoxes.push(new THREE.Box3().setFromObject(s2));
-          doors.push({ roomA: idx, roomB: idx - 1, pos: new THREE.Vector3(cx - ROOM_W/2 - thick/2, 0, cz) });
-        }
-        // right
-        if (rx === GRID_COLS -1){
-          const right = new THREE.Mesh(new THREE.BoxGeometry(thick, wallH, ROOM_D), wallMat);
-          right.position.set(cx + ROOM_W/2 + thick/2, wallH/2, cz); scene.add(right); wallBoxes.push(new THREE.Box3().setFromObject(right));
-        } else {
-          const doorW = 2.0, segDepth = (ROOM_D - doorW)/2;
-          const s1 = new THREE.Mesh(new THREE.BoxGeometry(thick, wallH, segDepth), wallMat);
-          s1.position.set(cx + ROOM_W/2 + thick/2, wallH/2, cz + (ROOM_D/2 - segDepth/2)); scene.add(s1); wallBoxes.push(new THREE.Box3().setFromObject(s1));
-          const s2 = new THREE.Mesh(new THREE.BoxGeometry(thick, wallH, segDepth), wallMat);
-          s2.position.set(cx + ROOM_W/2 + thick/2, wallH/2, cz - (ROOM_D/2 - segDepth/2)); scene.add(s2); wallBoxes.push(new THREE.Box3().setFromObject(s2));
-          doors.push({ roomA: idx, roomB: idx + 1, pos: new THREE.Vector3(cx + ROOM_W/2 + thick/2, 0, cz) });
-        }
-        // back
-        if (ry === 0){
-          const back = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, wallH, thick), wallMat);
-          back.position.set(cx, wallH/2, cz - ROOM_D/2 - thick/2); scene.add(back); wallBoxes.push(new THREE.Box3().setFromObject(back));
-        } else {
-          const doorW = 2.0, segW = (ROOM_W - doorW)/2;
-          const s1 = new THREE.Mesh(new THREE.BoxGeometry(segW, wallH, thick), wallMat);
-          s1.position.set(cx - (ROOM_W/2 - segW/2), wallH/2, cz - ROOM_D/2 - thick/2); scene.add(s1); wallBoxes.push(new THREE.Box3().setFromObject(s1));
-          const s2 = new THREE.Mesh(new THREE.BoxGeometry(segW, wallH, thick), wallMat);
-          s2.position.set(cx + (ROOM_W/2 - segW/2), wallH/2, cz - ROOM_D/2 - thick/2); scene.add(s2); wallBoxes.push(new THREE.Box3().setFromObject(s2));
-          doors.push({ roomA: idx, roomB: idx - GRID_COLS, pos: new THREE.Vector3(cx, 0, cz - ROOM_D/2 - thick/2) });
-        }
-        // front
-        if (ry === GRID_ROWS -1){
-          const front = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, wallH, thick), wallMat);
-          front.position.set(cx, wallH/2, cz + ROOM_D/2 + thick/2); scene.add(front); wallBoxes.push(new THREE.Box3().setFromObject(front));
-        } else {
-          const doorW = 2.0, segW = (ROOM_W - doorW)/2;
-          const s1 = new THREE.Mesh(new THREE.BoxGeometry(segW, wallH, thick), wallMat);
-          s1.position.set(cx - (ROOM_W/2 - segW/2), wallH/2, cz + ROOM_D/2 + thick/2); scene.add(s1); wallBoxes.push(new THREE.Box3().setFromObject(s1));
-          const s2 = new THREE.Mesh(new THREE.BoxGeometry(segW, wallH, thick), wallMat);
-          s2.position.set(cx + (ROOM_W/2 - segW/2), wallH/2, cz + ROOM_D/2 + thick/2); scene.add(s2); wallBoxes.push(new THREE.Box3().setFromObject(s2));
-          doors.push({ roomA: idx, roomB: idx + GRID_COLS, pos: new THREE.Vector3(cx, 0, cz + ROOM_D/2 + thick/2) });
+        function animateAttack(isPlayer) {
+            const char = isPlayer ? document.getElementById('playerChar') : document.getElementById('enemyChar');
+            char.classList.remove('attack-animation');
+            void char.offsetWidth;
+            char.classList.add('attack-animation');
         }
 
-        // covers
-        const coverCount = Math.random() < 0.6 ? Math.floor(Math.random()*2)+1 : 0;
-        for(let c=0;c<coverCount;c++){
-          const cxOff = cx + (Math.random()*(ROOM_W-2) - (ROOM_W-2)/2);
-          const czOff = cz + (Math.random()*(ROOM_D-2) - (ROOM_D-2)/2);
-          const box = new THREE.Mesh(new THREE.BoxGeometry(1.4,0.9,0.8), new THREE.MeshStandardMaterial({ color:0x334b50 }));
-          box.position.set(cxOff, 0.45, czOff);
-          scene.add(box);
-          covers.push({ mesh: box, box3: new THREE.Box3().setFromObject(box), roomIdx: idx });
+        function animateDamage(isPlayer) {
+            const char = isPlayer ? document.getElementById('playerChar') : document.getElementById('enemyChar');
+            char.classList.remove('damage-animation');
+            void char.offsetWidth;
+            char.classList.add('damage-animation');
         }
 
-        // spawn enemies
-        const enemies = [];
-        if (Math.random() < ENEMY_SPAWN_CHANCE){
-          const count = 1 + Math.floor(Math.random()*MAX_ENEMIES);
-          for(let e=0;e<count;e++){
-            const ex = cx + (Math.random()*(ROOM_W-2) - (ROOM_W-2)/2);
-            const ez = cz + (Math.random()*(ROOM_D-2) - (ROOM_D-2)/2);
-            const sph = new THREE.Mesh(new THREE.SphereGeometry(0.45, 10,10), new THREE.MeshStandardMaterial({ color:0xcc3333, emissive:0x220000 }));
-            sph.position.set(ex, 0.45, ez);
-            sph.userData = { hp: 100, isArmed: Math.random() < 0.8, alerted: false, stunnedUntil: 0, nextFire: 0, roamTarget: null, roomIdx: idx };
-            scene.add(sph);
-            enemies.push(sph);
-          }
+        function updateUI() {
+            const playerHealthPercent = (gameState.player.health / gameState.player.maxHealth) * 100;
+            const playerBar = document.getElementById('playerHealthBar');
+            playerBar.style.width = Math.max(0, playerHealthPercent) + '%';
+            if (playerHealthPercent < 30) playerBar.classList.add('low');
+            else playerBar.classList.remove('low');
+            document.getElementById('playerHealthText').textContent = 
+                Math.max(0, Math.floor(gameState.player.health)) + '/' + gameState.player.maxHealth;
+
+            const enemyHealthPercent = (gameState.enemy.health / gameState.enemy.maxHealth) * 100;
+            const enemyBar = document.getElementById('enemyHealthBar');
+            enemyBar.style.width = Math.max(0, enemyHealthPercent) + '%';
+            if (enemyHealthPercent < 30) enemyBar.classList.add('low');
+            else enemyBar.classList.remove('low');
+            document.getElementById('enemyHealthText').textContent = 
+                Math.max(0, Math.floor(gameState.enemy.health)) + '/' + gameState.enemy.maxHealth;
+
+            document.getElementById('playerSpecialBar').style.width = gameState.player.specialEnergy + '%';
+            document.getElementById('enemySpecialBar').style.width = gameState.enemy.specialEnergy + '%';
+
+            const specialBtn = document.getElementById('specialBtn');
+            specialBtn.disabled = gameState.player.specialEnergy < 100 || gameState.gameOver;
+
+            if (gameState.gameOver) {
+                document.querySelectorAll('.actions button').forEach(btn => btn.disabled = true);
+            }
         }
-        enemiesInRoom.push(enemies);
-      }
-    }
-    if (rooms.length>0){
-      const f = rooms[0];
-      player.root.position.set(f.cx - ROOM_W/2 - 1.6, 0, f.cz);
-      player.yaw = 0; player.pitch = -0.12;
-      updateCameraImmediate();
-    }
-    roomCountEl.textContent = rooms.length;
-  }
 
-  // ---------- Input handling (joystick + touch) ----------
-  function updateJoystickCenter(){ const rect = joystick.getBoundingClientRect(); stickCenter.x = rect.left + rect.width/2; stickCenter.y = rect.top + rect.height/2; }
-  updateJoystickCenter(); window.addEventListener('resize', updateJoystickCenter);
+        function addLog(message) {
+            gameState.battleLog.push(message);
+            const log = document.getElementById('battleLog');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            if (message.includes('Du')) entry.classList.add('player');
+            else entry.classList.add('enemy');
+            entry.textContent = message;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
 
-  joystick.addEventListener('touchstart', (e)=>{ e.preventDefault(); const t = e.changedTouches[0]; leftTouchId = t.identifier; updateStick(t.clientX, t.clientY); }, { passive:false });
-  joystick.addEventListener('touchmove', (e)=>{ e.preventDefault(); for (let i=0;i<e.changedTouches.length;i++){ const t = e.changedTouches[i]; if (t.identifier === leftTouchId) updateStick(t.clientX, t.clientY); } }, { passive:false });
-  joystick.addEventListener('touchend', (e)=>{ e.preventDefault(); for (let i=0;i<e.changedTouches.length;i++){ if (e.changedTouches[i].identifier === leftTouchId){ leftTouchId = null; moveVec.x = 0; moveVec.y = 0; stick.style.transform='translate(0px,0px)'; } } }, { passive:false });
-
-  function updateStick(cx, cy){
-    const dx = cx - stickCenter.x, dy = cy - stickCenter.y;
-    const max = Math.max(40, joystick.clientWidth/2 - 10);
-    const mag = Math.sqrt(dx*dx + dy*dy);
-    let nx = dx, ny = dy;
-    if (mag > max){ nx = dx/mag*max; ny = dy/mag*max; }
-    stick.style.transform = `translate(${nx}px, ${ny}px)`;
-    moveVec.x = nx / max; moveVec.y = -ny / max;
-  }
-
-  document.addEventListener('touchstart', (e)=>{ for (let i=0;i<e.changedTouches.length;i++){ const t = e.changedTouches[i]; if (t.clientX > window.innerWidth/2 && rightTouchId===null){ rightTouchId = t.identifier; lastLook = { x: t.clientX, y: t.clientY }; } } }, { passive:false });
-  document.addEventListener('touchmove', (e)=>{ e.preventDefault(); for (let i=0;i<e.changedTouches.length;i++){ const t = e.changedTouches[i]; if (t.identifier === rightTouchId){ const dx = t.clientX - lastLook.x, dy = t.clientY - lastLook.y; lastLook.x = t.clientX; lastLook.y = t.clientY; player.yaw -= dx * 0.004; player.pitch -= dy * 0.004; player.pitch = clamp(player.pitch, -Math.PI/2+0.1, Math.PI/2-0.1); updateCameraImmediate(); } } }, { passive:false });
-  document.addEventListener('touchend', (e)=>{ for (let i=0;i<e.changedTouches.length;i++){ if (e.changedTouches[i].identifier === rightTouchId){ rightTouchId = null; lastLook = null; } } }, { passive:false });
-
-  // desktop mouse look fallback
-  let mouseDown = false;
-  document.addEventListener('mousedown', (e)=>{ mouseDown = true; lastLook = { x:e.clientX, y:e.clientY }; });
-  document.addEventListener('mousemove', (e)=>{ if (mouseDown && lastLook){ const dx = e.clientX - lastLook.x, dy = e.clientY - lastLook.y; lastLook.x = e.clientX; lastLook.y = e.clientY; player.yaw -= dx * 0.005; player.pitch -= dy * 0.005; player.pitch = clamp(player.pitch, -Math.PI/2+0.1, Math.PI/2-0.1); updateCameraImmediate(); } });
-  document.addEventListener('mouseup', ()=>{ mouseDown = false; lastLook = null; });
-
-  // keyboard fallback movement
-  document.addEventListener('keydown', (e)=>{ if (e.key==='w') keys.w=true; if (e.key==='s') keys.s=true; if (e.key==='a') keys.a=true; if (e.key==='d') keys.d=true; if (e.key==='m'||e.key==='M') toggleMinimap(); if (e.key==='c'||e.key==='C'){ thirdPerson = !thirdPerson; updateCameraImmediate(); } if (e.key==='1'||e.key==='2'||e.key==='3'){ const t = e.key==='1' ? 'silent' : e.key==='2' ? 'flashbang' : 'dynamic'; if (currentNearbyDoor) executeBreach(currentNearbyDoor,t); } }, { passive:true });
-  document.addEventListener('keyup', (e)=>{ if (e.key==='w') keys.w=false; if (e.key==='s') keys.s=false; if (e.key==='a') keys.a=false; if (e.key==='d') keys.d=false; });
-
-  // shoot / reload / UI buttons
-  document.getElementById('shootBtn').addEventListener('touchstart', (e)=>{ e.preventDefault(); attemptShoot(); }, { passive:false });
-  document.getElementById('shootBtn').addEventListener('mousedown', ()=>attemptShoot());
-  document.getElementById('reloadBtn').addEventListener('click', ()=>startReload());
-  document.getElementById('toggleView').addEventListener('click', ()=>{ thirdPerson = !thirdPerson; updateCameraImmediate(); });
-  document.getElementById('mapBtn').addEventListener('click', ()=>{ openFullMap(); });
-
-  // breach panel handlers
-  document.querySelectorAll('#breachPanel .breachBtn').forEach(b => b.addEventListener('click', ()=>{ const t = b.dataset.type; if(currentNearbyDoor) executeBreach(currentNearbyDoor, t); }));
-
-  // minimap open/center
-  openMapBtn.addEventListener('click', ()=>openFullMap());
-  centerMapBtn.addEventListener('click', ()=>{ fullMapOffset.x = 0; fullMapOffset.y = 0; fullMapZoom = 1; drawFullMap(); });
-
-  // full map UI buttons
-  closeFullMapBtn.addEventListener('click', ()=>closeFullMap());
-  zoomInBtn.addEventListener('click', ()=>{ fullMapZoom = Math.min(4, fullMapZoom * 1.2); drawFullMap(); });
-  zoomOutBtn.addEventListener('click', ()=>{ fullMapZoom = Math.max(0.2, fullMapZoom / 1.2); drawFullMap(); });
-  resetViewBtn.addEventListener('click', ()=>{ fullMapZoom = 1; fullMapOffset = { x:0, y:0 }; drawFullMap(); });
-
-  // full map pan/zoom interactions
-  let fullMapState = { dragging:false, lastPos:null, pinchStartDist:0, pinchStartZoom:1 };
-  fullCanvas.addEventListener('wheel', (e)=>{ e.preventDefault(); const delta = e.deltaY > 0 ? 0.9 : 1.1; fullMapZoom = clamp(fullMapZoom * delta, 0.2, 6); drawFullMap(); }, { passive:false });
-  fullCanvas.addEventListener('mousedown', (e)=>{ fullMapState.dragging = true; fullMapState.lastPos = { x:e.clientX, y:e.clientY }; });
-  window.addEventListener('mousemove', (e)=>{ if(fullMapState.dragging){ const dx = e.clientX - fullMapState.lastPos.x; const dy = e.clientY - fullMapState.lastPos.y; fullMapState.lastPos = { x:e.clientX, y:e.clientY }; fullMapOffset.x += dx; fullMapOffset.y += dy; drawFullMap(); }});
-  window.addEventListener('mouseup', ()=>{ fullMapState.dragging = false; fullMapState.lastPos = null; });
-
-  // touch pan + pinch on full map
-  fullCanvas.addEventListener('touchstart', (e)=>{ e.preventDefault(); if (e.touches.length === 1){ fullMapState.dragging = true; fullMapState.lastPos = { x:e.touches[0].clientX, y:e.touches[0].clientY }; } else if (e.touches.length === 2){ fullMapState.pinchStartDist = distanceBetween(e.touches[0], e.touches[1]); fullMapState.pinchStartZoom = fullMapZoom; } }, { passive:false });
-  fullCanvas.addEventListener('touchmove', (e)=>{ e.preventDefault(); if (e.touches.length === 1 && fullMapState.dragging){ const dx = e.touches[0].clientX - fullMapState.lastPos.x; const dy = e.touches[0].clientY - fullMapState.lastPos.y; fullMapState.lastPos = { x:e.touches[0].clientX, y:e.touches[0].clientY }; fullMapOffset.x += dx; fullMapOffset.y += dy; drawFullMap(); } else if (e.touches.length === 2){ const d = distanceBetween(e.touches[0], e.touches[1]); const ratio = d / fullMapState.pinchStartDist; fullMapZoom = clamp(fullMapState.pinchStartZoom * ratio, 0.2, 6); drawFullMap(); } }, { passive:false });
-  fullCanvas.addEventListener('touchend', (e)=>{ if (e.touches.length === 0){ fullMapState.dragging = false; fullMapState.lastPos = null; } }, { passive:false });
-
-  function distanceBetween(a,b){ const dx = a.clientX - b.clientX, dy = a.clientY - b.clientY; return Math.sqrt(dx*dx+dy*dy); }
-
-  // ---------- Breach / Shoot / Reload ----------
-  let currentNearbyDoor = null;
-  let breachVisible = false;
-  function attemptShoot(){
-    if (player.reloading || player.ammo <= 0){ showMessage('Må reload!'); return; }
-    player.ammo = Math.max(0, player.ammo - 1); ammoEl.textContent = player.ammo;
-    const origin = camera.getWorldPosition(new THREE.Vector3());
-    const dir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
-    const r = new THREE.Raycaster(origin, dir, 0.2, 100);
-    const hits = r.intersectObjects(enemiesInRoom.flat(), false);
-    if (hits.length > 0){
-      const hit = hits[0].object;
-      hit.userData.hp -= FIRE_DAMAGE;
-      hit.material.color.setHex(0xff8c42);
-      showMessage('Truffet! HP=' + Math.max(0, Math.floor(hit.userData.hp)));
-      if (hit.userData.hp <= 0){
-        scene.remove(hit);
-        for (let i=0;i<enemiesInRoom.length;i++){ const idx = enemiesInRoom[i].indexOf(hit); if (idx !== -1) enemiesInRoom[i].splice(idx,1); }
-      } else { if (hit.userData.isArmed) hit.userData.alerted = true; }
-    } else { showMessage('Bom'); }
-  }
-  function startReload(){ if (player.reloading) return; player.reloading = true; showMessage('Lader...', 1000); setTimeout(()=>{ player.ammo = player.maxAmmo; player.reloading = false; ammoEl.textContent = player.ammo; showMessage('Reload fullført',900); }, RELOAD_TIME*1000); }
-
-  function executeBreach(door, type){
-    breachPanel.style.display = 'none'; breachVisible = false;
-    const ppos = player.root.position.clone();
-    const ra = rooms[door.roomA], rb = rooms[door.roomB];
-    const dA = ppos.distanceTo(new THREE.Vector3(ra.cx,0,ra.cz));
-    const dB = ppos.distanceTo(new THREE.Vector3(rb.cx,0,rb.cz));
-    const target = (dA < dB) ? door.roomB : door.roomA;
-    const enemies = enemiesInRoom[target] || [];
-    if (enemies.length === 0){ showMessage('Rommet ser tomt ut'); return; }
-    let chance = 0;
-    if (type === 'silent') chance = 0.85;
-    else if (type === 'flashbang') chance = Math.min(1, 0.85 + 0.65);
-    else if (type === 'dynamic') chance = Math.max(0, 0.85 - 0.45);
-    const succ = Math.random() < chance;
-    if (succ){
-      const stun = (type === 'flashbang') ? STUN_DURATION + 1.5 : STUN_DURATION * 0.6;
-      enemies.forEach(e=>{ e.userData.alerted=false; e.userData.stunnedUntil = performance.now()/1000 + stun; e.material.color.setHex(0xffb86b); });
-      showMessage(`Breach (${type}) suksess — stunned ${Math.round(stun)}s`);
-    } else {
-      enemies.forEach(e=>{ if (e.userData.isArmed) e.userData.alerted = true; e.material.color.setHex(0xff3333); });
-      let total = 0; enemies.forEach(e=>{ if(e.userData.isArmed) total += ENEMY_FIRE_MIN + Math.random()*(ENEMY_FIRE_MAX-ENEMY_FIRE_MIN); });
-      applyDamage(total);
-      showMessage(`Breach (${type}) mislykket —skutt tilbake`);
-    }
-  }
-
-  function applyDamage(amount){ player.health -= amount; player.health = Math.max(0, player.health); hpEl.textContent = Math.round(player.health); showMessage('Du tok ' + Math.round(amount) + ' skade', 1200); if (player.health <= 0) showMessage('Du er nøytralisert — last siden på nytt', 4000); }
-
-  // ---------- Enemy AI ----------
-  function enemyAI(dt){
-    const now = performance.now()/1000;
-    for (let e of enemiesInRoom.flat()){
-      if (!e.parent) continue;
-      if (e.userData.stunnedUntil && now < e.userData.stunnedUntil) continue;
-      if (!e.userData.roamTarget || Math.random()*1000 < 2) {
-        const r = rooms[e.userData.roomIdx];
-        e.userData.roamTarget = new THREE.Vector3(r.cx + (Math.random()*(ROOM_W-2)-(ROOM_W-2)/2), 0, r.cz + (Math.random()*(ROOM_D-2)-(ROOM_D-2)/2));
-      }
-      if (e.userData.alerted){
-        const playerPos = player.root.position.clone();
-        const toPlayer = playerPos.clone().sub(e.position);
-        const dist = toPlayer.length();
-        if (now >= e.userData.nextFire && e.userData.isArmed){
-          const hitChance = clamp(1 - dist/50, 0.05, 0.85);
-          if (Math.random() < hitChance){ const dmg = ENEMY_FIRE_MIN + Math.random()*(ENEMY_FIRE_MAX-ENEMY_FIRE_MIN); applyDamage(dmg); }
-          e.userData.nextFire = now + (0.9 + Math.random()*1.6);
+            if (gameState.battleLog.length > 10) {
+                gameState.battleLog.shift();
+                log.removeChild(log.firstChild);
+            }
         }
-        const nearbyCover = findNearestCover(e.position, e.userData.roomIdx);
-        if (nearbyCover && Math.random() < 0.4){
-          const dir = nearbyCover.position.clone().sub(e.position).setY(0).normalize(); e.position.addScaledVector(dir, dt * 1.8);
-        } else {
-          const dir = toPlayer.setY(0).normalize(); e.position.addScaledVector(dir, dt * 1.6);
+
+        function calculateDamage(attacker, defender, isSpecial = false) {
+            let damage = attacker.attack + Math.floor(Math.random() * 10) - 5;
+            if (isSpecial) damage *= 2.5;
+            let reduction = gameState.playerDefending ? defender.defense * 1.5 : defender.defense;
+            damage = Math.max(1, damage - reduction);
+            return Math.floor(damage);
         }
-      } else {
-        if (e.userData.roamTarget){
-          const dir = e.userData.roamTarget.clone().sub(e.position); dir.y = 0;
-          const dist = dir.length();
-          if (dist > 0.3){ dir.normalize(); e.position.addScaledVector(dir, dt * 0.9); } else e.userData.roamTarget = null;
+
+        function playerAttack() {
+            if (gameState.gameOver) return;
+
+            gameState.playerDefending = false;
+            const damage = calculateDamage(gameState.player, gameState.enemy);
+            gameState.enemy.health -= damage;
+            gameState.player.specialEnergy = Math.min(100, gameState.player.specialEnergy + 30);
+
+            animateAttack(true);
+            animateDamage(false);
+            addLog('Du angrep: ' + damage + ' skade!');
+
+            updateUI();
+
+            if (gameState.enemy.health <= 0) {
+                endGame(true);
+                return;
+            }
+
+            setTimeout(() => enemyTurn(), 800);
         }
-      }
-    }
-  }
-  function findNearestCover(pos, roomIdx){ let best=null, bd=1e9; for (let c of covers){ if (c.roomIdx !== roomIdx)
+
+        function playerDefend() {
+            if (gameState.gameOver) return;
+
+            gameState.playerDefending = true;
+            gameState.player.specialEnergy = Math.min(100, gameState.player.specialEnergy + 40);
+
+            addLog('Du forsvarer deg!');
+
+            updateUI();
+            setTimeout(() => enemyTurn(), 800);
+        }
+
+        function playerHeal() {
+            if (gameState.gameOver) return;
+
+            gameState.playerDefending = false;
+            const healAmount = Math.floor(gameState.player.maxHealth * 0.3);
+            gameState.player.health = Math.min(gameState.player.maxHealth, gameState.player.health + healAmount);
+            gameState.player.specialEnergy = Math.min(100, gameState.player.specialEnergy + 20);
+
+            addLog('Du helbredet deg: +' + healAmount + ' HP!');
+
+            updateUI();
+            setTimeout(() => enemyTurn(), 800);
+        }
+
+        function playerSpecial() {
+            if (gameState.gameOver || gameState.player.specialEnergy < 100) return;
+
+            gameState.playerDefending = false;
+            gameState.player.specialEnergy = 0;
+
+            const damage = calculateDamage(gameState.player, gameState.enemy, true);
+            gameState.enemy.health -= damage;
+
+            animateAttack(true);
+            animateDamage(false);
+            addLog('Ultimate angrep: ' + damage + ' skade!');
+
+            updateUI();
+
+            if (gameState.enemy.health <= 0) {
+                endGame(true);
+                return;
+            }
+
+            setTimeout(() => enemyTurn(), 800);
+        }
+
+        function enemyTurn() {
+            if (gameState.gameOver) return;
+
+            gameState.enemyDefending = false;
+            const threshold = gameState.enemy.health / gameState.enemy.maxHealth;
+            const random = Math.random();
+
+            setTimeout(() => {
+                if (gameState.enemy.specialEnergy >= 100 && threshold < 0.5) {
+                    gameState.enemy.specialEnergy = 0;
+                    const damage = calculateDamage(gameState.enemy, gameState.player, true);
+                    gameState.player.health -= damage;
+                    animateAttack(false);
+                    animateDamage(true);
+                    addLog(gameState.enemy.name + ' ultimate: ' + damage + ' skade!');
+                } else if (threshold < 0.3) {
+                    const healAmount = Math.floor(gameState.enemy.maxHealth * 0.25);
+                    gameState.enemy.health = Math.min(gameState.enemy.maxHealth, gameState.enemy.health + healAmount);
+                    gameState.enemy.specialEnergy = Math.min(100, gameState.enemy.specialEnergy + 30);
+                    addLog(gameState.enemy.name + ' helbredet seg: +' + healAmount);
+                } else if (random < 0.3) {
+                    gameState.enemyDefending = true;
+                    gameState.enemy.specialEnergy = Math.min(100, gameState.enemy.specialEnergy + 30);
+                    addLog(gameState.enemy.name + ' forsvarer seg!');
+                } else {
+                    const damage = calculateDamage(gameState.enemy, gameState.player);
+                    gameState.player.health -= damage;
+                    gameState.enemy.specialEnergy = Math.min(100, gameState.enemy.specialEnergy + 25);
+                    animateAttack(false);
+                    animateDamage(true);
+                    addLog(gameState.enemy.name + ' angrep: ' + damage + ' skade!');
+                }
+
+                gameState.playerDefending = false;
+
+                if (gameState.player.health <= 0) {
+                    endGame(false);
+                }
+
+                updateUI();
+            }, 300);
+        }
+
+        function endGame(playerWon) {
+            gameState.gameOver = true;
+            const statusMessage = document.getElementById('statusMessage');
+
+            if (playerWon) {
+                statusMessage.className = 'status-message show';
+                statusMessage.innerHTML = '🎉 SEIER! 🎉';
+                statusMessage.style.color = '#00ff00';
+                addLog('Du vant!');
+            } else {
+                statusMessage.className = 'status-message show';
+                statusMessage.innerHTML = '💀 TAP 💀';
+                statusMessage.style.color = '#ff0000';
+                addLog('Du tapte!');
+            }
+
+            updateUI();
+        }
+
+        function resetGame() {
+            const randomEnemy = enemies[Math.floor(Math.random() * enemies.length)];
+
+            gameState.player.health = 100;
+            gameState.player.specialEnergy = 0;
+            gameState.playerDefending = false;
+
+            gameState.enemy.health = randomEnemy.health;
+            gameState.enemy.maxHealth = randomEnemy.health;
+            gameState.enemy.attack = randomEnemy.attack;
+            gameState.enemy.defense = randomEnemy.defense;
+            gameState.enemy.specialEnergy = 0;
+            gameState.enemy.defending = false;
+            gameState.enemy.name = randomEnemy.name;
+
+            gameState.battleLog = [];
+            gameState.gameOver = false;
+
+            document.getElementById('enemyNameUI').textContent = randomEnemy.emoji + ' ' + gameState.enemy.name;
+            document.getElementById('playerNameUI').textContent = '🧙 Du';
+            document.getElementById('enemyChar').textContent = randomEnemy.emoji;
+            document.getElementById('enemyAttack').textContent = gameState.enemy.attack;
+            document.getElementById('enemyDefense').textContent = gameState.enemy.defense;
+            document.getElementById('battleLog').innerHTML = '';
+
+            const statusMessage = document.getElementById('statusMessage');
+            statusMessage.classList.remove('show');
+
+            addLog(gameState.enemy.name + ' dukket opp!');
+            updateUI();
+        }
+
+        // Initialize
+        resetGame();
+    </script>
+</body>
+</html>
