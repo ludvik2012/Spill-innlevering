@@ -87,6 +87,21 @@
             pointer-events: none;
         }
 
+        .wave-info {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px 30px;
+            border-radius: 10px;
+            border: 2px solid #ffaa00;
+            font-size: 1.2em;
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(255, 170, 0, 0.3);
+            pointer-events: auto;
+        }
+
         .player-stats {
             position: absolute;
             bottom: 20px;
@@ -212,9 +227,19 @@
             background: rgba(255, 255, 0, 0.3);
         }
 
+        .ability-btn {
+            border-color: #00ccff;
+            color: #00ccff;
+            background: rgba(0, 204, 255, 0.1);
+        }
+
+        .ability-btn:hover:not(:disabled) {
+            background: rgba(0, 204, 255, 0.3);
+        }
+
         .battle-log {
             position: absolute;
-            top: 20px;
+            top: 80px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.9);
@@ -222,7 +247,7 @@
             border-radius: 8px;
             border: 2px solid #00ffff;
             width: 450px;
-            max-height: 150px;
+            max-height: 120px;
             overflow-y: auto;
             pointer-events: auto;
             font-size: 0.8em;
@@ -242,17 +267,23 @@
             color: #ff0000;
         }
 
+        .log-entry.buff {
+            color: #ffaa00;
+            font-weight: bold;
+        }
+
         .status-message {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 3em;
+            font-size: 2.5em;
             font-weight: bold;
             pointer-events: auto;
             text-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
             display: none;
             z-index: 100;
+            text-align: center;
         }
 
         .status-message.show {
@@ -265,10 +296,58 @@
             50% { transform: translate(-50%, -50%) scale(1.2); }
         }
 
+        .buff-selection {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #ffaa00;
+            display: none;
+            z-index: 100;
+            pointer-events: auto;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(255, 170, 0, 0.5);
+        }
+
+        .buff-selection.show {
+            display: block;
+        }
+
+        .buff-selection h2 {
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            color: #ffaa00;
+        }
+
+        .buff-options {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .buff-option {
+            background: rgba(255, 170, 0, 0.2);
+            border: 2px solid #ffaa00;
+            padding: 15px 25px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .buff-option:hover {
+            background: rgba(255, 170, 0, 0.4);
+            transform: scale(1.05);
+        }
+
         .reset-btn {
             position: absolute;
             top: 20px;
-            left: 20px;
+            right: 20px;
             padding: 8px 16px;
             background: rgba(100, 100, 255, 0.2);
             border: 2px solid #6464ff;
@@ -293,11 +372,18 @@
     </div>
 
     <div class="ui">
-        <button class="reset-btn" onclick="resetGame()">🔄 Nytt Spill</button>
+        <button class="reset-btn" onclick="resetAllWaves()">🔄 Start Over</button>
+
+        <div class="wave-info" id="waveInfo">Wave 1/10</div>
 
         <div class="battle-log" id="battleLog"></div>
 
         <div class="status-message" id="statusMessage"></div>
+
+        <div class="buff-selection" id="buffSelection">
+            <h2>⭐ Velg Buff!</h2>
+            <div class="buff-options" id="buffOptions"></div>
+        </div>
 
         <div class="player-stats">
             <div class="stat-name" id="playerNameUI">🧙 Du</div>
@@ -305,10 +391,6 @@
                 <div class="health-bar" id="playerHealthBar" style="width: 100%">
                     <span id="playerHealthText">100/100</span>
                 </div>
-            </div>
-            <div class="stat-row">
-                <span>HP:</span>
-                <span id="playerHPValue">100</span>
             </div>
             <div class="stat-row">
                 <span>Styrke:</span>
@@ -332,10 +414,6 @@
                 </div>
             </div>
             <div class="stat-row">
-                <span>HP:</span>
-                <span id="enemyHPValue">100</span>
-            </div>
-            <div class="stat-row">
                 <span>Styrke:</span>
                 <span id="enemyAttack">12</span>
             </div>
@@ -354,18 +432,23 @@
             <button onclick="playerDefend()">🛡️ Forsvar</button>
             <button onclick="playerHeal()">💚 Heil</button>
             <button class="special-btn" onclick="playerSpecial()" id="specialBtn" disabled>✨ Ultimate</button>
+            <button class="ability-btn" onclick="playerAbility()" id="abilityBtn" style="display: none;"></button>
         </div>
     </div>
 
     <script>
         // Game state
         const gameState = {
+            wave: 1,
+            totalWaves: 10,
             player: {
                 health: 100,
                 maxHealth: 100,
                 attack: 15,
                 defense: 10,
-                specialEnergy: 0
+                specialEnergy: 0,
+                ability: null,
+                abilityEnergy: 0
             },
             enemy: {
                 health: 100,
@@ -373,7 +456,8 @@
                 attack: 12,
                 defense: 8,
                 specialEnergy: 0,
-                name: "Drage"
+                name: "Drage",
+                emoji: "🐲"
             },
             battleLog: [],
             gameOver: false,
@@ -386,7 +470,85 @@
             { name: "Robot", health: 80, attack: 14, defense: 12, emoji: "🤖" },
             { name: "Troll", health: 120, attack: 11, defense: 6, emoji: "👹" },
             { name: "Vampyr", health: 85, attack: 16, defense: 9, emoji: "🧛" },
-            { name: "Spøkelse", health: 70, attack: 13, defense: 11, emoji: "👻" }
+            { name: "Spøkelse", health: 70, attack: 13, defense: 11, emoji: "👻" },
+            { name: "Oger", health: 110, attack: 13, defense: 7, emoji: "👺" },
+            { name: "Feniks", health: 95, attack: 15, defense: 10, emoji: "🔥" }
+        ];
+
+        const buffs = [
+            {
+                name: "Styrke Boost",
+                emoji: "💪",
+                description: "Angrepssterke +3",
+                apply: () => {
+                    gameState.player.attack += 3;
+                    addLog("💪 Du fikk +3 styrke!", "buff");
+                }
+            },
+            {
+                name: "Forsvars Boost",
+                emoji: "🛡️",
+                description: "Forsvar +2",
+                apply: () => {
+                    gameState.player.defense += 2;
+                    addLog("🛡️ Du fikk +2 forsvar!", "buff");
+                }
+            },
+            {
+                name: "Helse Boost",
+                emoji: "���️",
+                description: "Maks HP +25",
+                apply: () => {
+                    gameState.player.maxHealth += 25;
+                    gameState.player.health = gameState.player.maxHealth;
+                    addLog("❤️ Du fikk +25 max HP!", "buff");
+                }
+            },
+            {
+                name: "Eldball",
+                emoji: "🔥",
+                description: "Spesiell evne: 15 skade",
+                apply: () => {
+                    gameState.player.ability = {
+                        name: "Eldball",
+                        emoji: "🔥",
+                        damage: 15
+                    };
+                    document.getElementById('abilityBtn').textContent = '🔥 Eldball';
+                    document.getElementById('abilityBtn').style.display = 'block';
+                    addLog("🔥 Du lærte Eldball!", "buff");
+                }
+            },
+            {
+                name: "Frostbolt",
+                emoji: "❄️",
+                description: "Spesiell evne: 12 skade",
+                apply: () => {
+                    gameState.player.ability = {
+                        name: "Frostbolt",
+                        emoji: "❄️",
+                        damage: 12
+                    };
+                    document.getElementById('abilityBtn').textContent = '❄️ Frostbolt';
+                    document.getElementById('abilityBtn').style.display = 'block';
+                    addLog("❄️ Du lærte Frostbolt!", "buff");
+                }
+            },
+            {
+                name: "Tordenbolt",
+                emoji: "⚡",
+                description: "Spesiell evne: 18 skade",
+                apply: () => {
+                    gameState.player.ability = {
+                        name: "Tordenbolt",
+                        emoji: "⚡",
+                        damage: 18
+                    };
+                    document.getElementById('abilityBtn').textContent = '⚡ Tordenbolt';
+                    document.getElementById('abilityBtn').style.display = 'block';
+                    addLog("⚡ Du lærte Tordenbolt!", "buff");
+                }
+            }
         ];
 
         function animateAttack(isPlayer) {
@@ -422,27 +584,35 @@
 
             document.getElementById('playerSpecialBar').style.width = gameState.player.specialEnergy + '%';
             document.getElementById('enemySpecialBar').style.width = gameState.enemy.specialEnergy + '%';
+            document.getElementById('playerAttack').textContent = gameState.player.attack;
+            document.getElementById('playerDefense').textContent = gameState.player.defense;
 
             const specialBtn = document.getElementById('specialBtn');
             specialBtn.disabled = gameState.player.specialEnergy < 100 || gameState.gameOver;
+
+            const abilityBtn = document.getElementById('abilityBtn');
+            if (gameState.player.ability) {
+                abilityBtn.disabled = gameState.gameOver;
+            }
 
             if (gameState.gameOver) {
                 document.querySelectorAll('.actions button').forEach(btn => btn.disabled = true);
             }
         }
 
-        function addLog(message) {
+        function addLog(message, type = 'battle') {
             gameState.battleLog.push(message);
             const log = document.getElementById('battleLog');
             const entry = document.createElement('div');
             entry.className = 'log-entry';
-            if (message.includes('Du')) entry.classList.add('player');
-            else entry.classList.add('enemy');
+            if (type === 'player' || message.includes('Du')) entry.classList.add('player');
+            else if (type === 'buff') entry.classList.add('buff');
+            else if (type === 'enemy' || message.includes(gameState.enemy.name)) entry.classList.add('enemy');
             entry.textContent = message;
             log.appendChild(entry);
             log.scrollTop = log.scrollHeight;
 
-            if (gameState.battleLog.length > 10) {
+            if (gameState.battleLog.length > 8) {
                 gameState.battleLog.shift();
                 log.removeChild(log.firstChild);
             }
@@ -466,12 +636,12 @@
 
             animateAttack(true);
             animateDamage(false);
-            addLog('Du angrep: ' + damage + ' skade!');
+            addLog('Du angrep: ' + damage + ' skade!', 'player');
 
             updateUI();
 
             if (gameState.enemy.health <= 0) {
-                endGame(true);
+                endWave(true);
                 return;
             }
 
@@ -484,7 +654,7 @@
             gameState.playerDefending = true;
             gameState.player.specialEnergy = Math.min(100, gameState.player.specialEnergy + 40);
 
-            addLog('Du forsvarer deg!');
+            addLog('Du forsvarer deg!', 'player');
 
             updateUI();
             setTimeout(() => enemyTurn(), 800);
@@ -498,7 +668,7 @@
             gameState.player.health = Math.min(gameState.player.maxHealth, gameState.player.health + healAmount);
             gameState.player.specialEnergy = Math.min(100, gameState.player.specialEnergy + 20);
 
-            addLog('Du helbredet deg: +' + healAmount + ' HP!');
+            addLog('Du helbredet deg: +' + healAmount + ' HP!', 'player');
 
             updateUI();
             setTimeout(() => enemyTurn(), 800);
@@ -515,12 +685,34 @@
 
             animateAttack(true);
             animateDamage(false);
-            addLog('Ultimate angrep: ' + damage + ' skade!');
+            addLog('Ultimate angrep: ' + damage + ' skade!', 'player');
 
             updateUI();
 
             if (gameState.enemy.health <= 0) {
-                endGame(true);
+                endWave(true);
+                return;
+            }
+
+            setTimeout(() => enemyTurn(), 800);
+        }
+
+        function playerAbility() {
+            if (gameState.gameOver || !gameState.player.ability) return;
+
+            gameState.playerDefending = false;
+
+            const damage = gameState.player.ability.damage;
+            gameState.enemy.health -= damage;
+
+            animateAttack(true);
+            animateDamage(false);
+            addLog(gameState.player.ability.emoji + ' ' + gameState.player.ability.name + ': ' + damage + ' skade!', 'player');
+
+            updateUI();
+
+            if (gameState.enemy.health <= 0) {
+                endWave(true);
                 return;
             }
 
@@ -541,75 +733,119 @@
                     gameState.player.health -= damage;
                     animateAttack(false);
                     animateDamage(true);
-                    addLog(gameState.enemy.name + ' ultimate: ' + damage + ' skade!');
+                    addLog(gameState.enemy.name + ' ultimate: ' + damage + ' skade!', 'enemy');
                 } else if (threshold < 0.3) {
                     const healAmount = Math.floor(gameState.enemy.maxHealth * 0.25);
                     gameState.enemy.health = Math.min(gameState.enemy.maxHealth, gameState.enemy.health + healAmount);
                     gameState.enemy.specialEnergy = Math.min(100, gameState.enemy.specialEnergy + 30);
-                    addLog(gameState.enemy.name + ' helbredet seg: +' + healAmount);
+                    addLog(gameState.enemy.name + ' helbredet seg: +' + healAmount, 'enemy');
                 } else if (random < 0.3) {
                     gameState.enemyDefending = true;
                     gameState.enemy.specialEnergy = Math.min(100, gameState.enemy.specialEnergy + 30);
-                    addLog(gameState.enemy.name + ' forsvarer seg!');
+                    addLog(gameState.enemy.name + ' forsvarer seg!', 'enemy');
                 } else {
                     const damage = calculateDamage(gameState.enemy, gameState.player);
                     gameState.player.health -= damage;
                     gameState.enemy.specialEnergy = Math.min(100, gameState.enemy.specialEnergy + 25);
                     animateAttack(false);
                     animateDamage(true);
-                    addLog(gameState.enemy.name + ' angrep: ' + damage + ' skade!');
+                    addLog(gameState.enemy.name + ' angrep: ' + damage + ' skade!', 'enemy');
                 }
 
                 gameState.playerDefending = false;
 
                 if (gameState.player.health <= 0) {
-                    endGame(false);
+                    endWave(false);
                 }
 
                 updateUI();
             }, 300);
         }
 
-        function endGame(playerWon) {
+        function endWave(won) {
             gameState.gameOver = true;
             const statusMessage = document.getElementById('statusMessage');
 
-            if (playerWon) {
-                statusMessage.className = 'status-message show';
-                statusMessage.innerHTML = '🎉 SEIER! 🎉';
-                statusMessage.style.color = '#00ff00';
-                addLog('Du vant!');
+            if (won) {
+                if (gameState.wave < gameState.totalWaves) {
+                    statusMessage.className = 'status-message show';
+                    statusMessage.innerHTML = '✨ Wave Klar! ✨';
+                    statusMessage.style.color = '#ffaa00';
+                    addLog('Du beseiret ' + gameState.enemy.name + '!', 'buff');
+                    
+                    setTimeout(() => {
+                        showBuffSelection();
+                    }, 2000);
+                } else {
+                    statusMessage.className = 'status-message show';
+                    statusMessage.innerHTML = '🎉 DU VANT ALLE WAVES! 🎉';
+                    statusMessage.style.color = '#00ff00';
+                    addLog('Du beseiret alle 10 fiender!', 'buff');
+                    document.querySelectorAll('.actions button').forEach(btn => btn.disabled = true);
+                }
             } else {
                 statusMessage.className = 'status-message show';
-                statusMessage.innerHTML = '💀 TAP 💀';
+                statusMessage.innerHTML = '💀 GAME OVER 💀';
                 statusMessage.style.color = '#ff0000';
-                addLog('Du tapte!');
+                addLog('Du tapte på wave ' + gameState.wave + '!', 'enemy');
             }
-
-            updateUI();
         }
 
-        function resetGame() {
+        function showBuffSelection() {
+            const buffSelection = document.getElementById('buffSelection');
+            const buffOptions = document.getElementById('buffOptions');
+            buffOptions.innerHTML = '';
+
+            // Shuffle and pick 3 random buffs
+            const shuffled = [...buffs].sort(() => 0.5 - Math.random());
+            const selected = shuffled.slice(0, 3);
+
+            selected.forEach((buff, index) => {
+                const option = document.createElement('div');
+                option.className = 'buff-option';
+                option.innerHTML = `<div style="font-size: 2em; margin-bottom: 10px;">${buff.emoji}</div><div><strong>${buff.name}</strong></div><div style="font-size: 0.8em;">${buff.description}</div>`;
+                option.onclick = () => selectBuff(buff);
+                buffOptions.appendChild(option);
+            });
+
+            buffSelection.classList.add('show');
+        }
+
+        function selectBuff(buff) {
+            buff.apply();
+            document.getElementById('buffSelection').classList.remove('show');
+            
+            gameState.wave++;
+            document.getElementById('waveInfo').textContent = 'Wave ' + gameState.wave + '/' + gameState.totalWaves;
+            
+            startNewWave();
+        }
+
+        function startNewWave() {
+            // Gradual difficulty increase - ikke for aggressiv
+            const difficultyMultiplier = 1 + (gameState.wave - 1) * 0.15;
+            
             const randomEnemy = enemies[Math.floor(Math.random() * enemies.length)];
 
-            gameState.player.health = 100;
+            gameState.player.health = gameState.player.maxHealth;
             gameState.player.specialEnergy = 0;
-            gameState.playerDefending = false;
+            gameState.player.defending = false;
 
-            gameState.enemy.health = randomEnemy.health;
-            gameState.enemy.maxHealth = randomEnemy.health;
-            gameState.enemy.attack = randomEnemy.attack;
-            gameState.enemy.defense = randomEnemy.defense;
+            gameState.enemy.health = Math.floor(randomEnemy.health * difficultyMultiplier);
+            gameState.enemy.maxHealth = gameState.enemy.health;
+            gameState.enemy.attack = Math.floor(randomEnemy.attack * difficultyMultiplier);
+            gameState.enemy.defense = Math.floor(randomEnemy.defense * difficultyMultiplier);
             gameState.enemy.specialEnergy = 0;
             gameState.enemy.defending = false;
             gameState.enemy.name = randomEnemy.name;
+            gameState.enemy.emoji = randomEnemy.emoji;
 
             gameState.battleLog = [];
             gameState.gameOver = false;
 
-            document.getElementById('enemyNameUI').textContent = randomEnemy.emoji + ' ' + gameState.enemy.name;
+            document.getElementById('enemyNameUI').textContent = gameState.enemy.emoji + ' ' + gameState.enemy.name;
             document.getElementById('playerNameUI').textContent = '🧙 Du';
-            document.getElementById('enemyChar').textContent = randomEnemy.emoji;
+            document.getElementById('enemyChar').textContent = gameState.enemy.emoji;
             document.getElementById('enemyAttack').textContent = gameState.enemy.attack;
             document.getElementById('enemyDefense').textContent = gameState.enemy.defense;
             document.getElementById('battleLog').innerHTML = '';
@@ -617,12 +853,31 @@
             const statusMessage = document.getElementById('statusMessage');
             statusMessage.classList.remove('show');
 
-            addLog(gameState.enemy.name + ' dukket opp!');
+            addLog('Wave ' + gameState.wave + ': ' + gameState.enemy.name + ' dukket opp!', 'buff');
             updateUI();
         }
 
+        function resetAllWaves() {
+            gameState.wave = 1;
+            gameState.player = {
+                health: 100,
+                maxHealth: 100,
+                attack: 15,
+                defense: 10,
+                specialEnergy: 0,
+                ability: null,
+                abilityEnergy: 0
+            };
+            
+            document.getElementById('abilityBtn').style.display = 'none';
+            document.getElementById('waveInfo').textContent = 'Wave 1/10';
+            document.getElementById('buffSelection').classList.remove('show');
+            
+            startNewWave();
+        }
+
         // Initialize
-        resetGame();
+        startNewWave();
     </script>
 </body>
 </html>
